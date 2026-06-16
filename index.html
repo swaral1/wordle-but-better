@@ -1,0 +1,807 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>wordle</title>
+<style>
+:root{
+  --bg:#f5f7fb;
+  --panel:rgba(255,255,255,.9);
+  --text:#1f2937;
+  --muted:#6b7280;
+  --tile:#fff;
+  --border:#d1d5db;
+  --shadow:0 20px 60px rgba(0,0,0,.18);
+  --theme:#ef4444;
+  --present:#c9b458;
+  --correct:#6aaa64;
+  --absent:#787c7e;
+  --menu:#fff;
+  --menuText:#111827;
+  --menuBorder:#e5e7eb;
+  --intensePresent:#f2d34f;
+  --intenseCorrect:#5fb35a;
+}
+body.night{
+  --bg:#0f172a;
+  --panel:rgba(15,23,42,.9);
+  --text:#e5e7eb;
+  --muted:#94a3b8;
+  --tile:#111827;
+  --border:#334155;
+  --shadow:0 20px 60px rgba(0,0,0,.42);
+  --menu:#0b1220;
+  --menuText:#e5e7eb;
+  --menuBorder:#243044;
+}
+body.red{--theme:#ef4444}
+body.pink{--theme:#ec4899}
+body.purple{--theme:#8b5cf6}
+body.blue{--theme:#3b82f6}
+
+body.intense{
+  --bg:#111;
+  --panel:rgba(10,10,10,.96);
+  --text:#f8fafc;
+  --muted:#9ca3af;
+  --tile:#161616;
+  --border:#242424;
+  --menu:#060606;
+  --menuText:#f8fafc;
+  --menuBorder:#1f1f1f;
+  --theme:#2a2a2a;
+  --present:var(--intensePresent);
+  --correct:var(--intenseCorrect);
+  --absent:#535353;
+}
+
+*{box-sizing:border-box}
+body{
+  margin:0;
+  min-height:100vh;
+  font-family:Inter,Arial,sans-serif;
+  color:var(--text);
+  background:radial-gradient(circle at top, color-mix(in srgb, var(--theme) 24%, transparent), transparent 42%), var(--bg);
+  display:flex;
+  justify-content:center;
+  padding:20px;
+  transition:.25s;
+}
+.app{width:min(980px,100%);display:grid;gap:18px}
+.panel{
+  background:var(--panel);
+  border:1px solid rgba(255,255,255,.08);
+  border-radius:24px;
+  box-shadow:var(--shadow);
+  backdrop-filter:blur(14px);
+  padding:22px;
+}
+.topbar{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:12px;
+  flex-wrap:wrap;
+}
+.topActions{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  position:relative;
+}
+h1{margin:0;font-size:2rem}
+
+.menuToggle{
+  width:44px;
+  height:44px;
+  border-radius:999px;
+  border:1px solid var(--border);
+  background:rgba(127,127,127,.08);
+  color:var(--text);
+  cursor:pointer;
+  display:grid;
+  place-items:center;
+}
+.menuToggle span{display:flex;gap:4px}
+.menuToggle i{
+  width:5px;
+  height:5px;
+  border-radius:50%;
+  background:currentColor;
+  display:block;
+}
+
+.dropdown{
+  position:absolute;
+  right:0;
+  top:52px;
+  width:min(390px,calc(100vw - 40px));
+  background:var(--menu);
+  color:var(--menuText);
+  border:1px solid var(--menuBorder);
+  border-radius:18px;
+  padding:10px;
+  z-index:50;
+  box-shadow:0 16px 40px rgba(0,0,0,.22);
+  display:none;
+}
+.dropdown.open{display:block}
+.dropdownGroup + .dropdownGroup{margin-top:8px}
+.groupHeader{
+  width:100%;
+  text-align:left;
+  border:0;
+  cursor:pointer;
+  padding:12px;
+  border-radius:14px;
+  background:rgba(127,127,127,.06);
+  color:inherit;
+  font-weight:800;
+}
+.groupBody{
+  padding:12px;
+  border-top:1px solid var(--menuBorder);
+}
+
+.modeRow,.themeRow,.switchRow{
+  display:flex;
+  gap:8px;
+  flex-wrap:wrap;
+}
+.pill,.chip,.themeDot{
+  border:1px solid var(--menuBorder);
+  background:rgba(127,127,127,.08);
+  color:var(--menuText);
+  border-radius:999px;
+  padding:8px 12px;
+  cursor:pointer;
+}
+.pill.active,.chip.active{
+  background:var(--theme);
+  color:#fff;
+  border-color:transparent;
+}
+.themeDot{
+  width:34px;
+  height:34px;
+  padding:0;
+}
+.themeDot.red{background:#ef4444}
+.themeDot.pink{background:#ec4899}
+.themeDot.purple{background:#8b5cf6}
+.themeDot.blue{background:#3b82f6}
+
+.note{
+  margin-top:10px;
+  font-size:.9rem;
+  color:var(--muted);
+  line-height:1.45;
+}
+
+.status{
+  display:flex;
+  gap:14px;
+  flex-wrap:wrap;
+  justify-content:center;
+  color:var(--muted);
+  font-size:.95rem;
+}
+
+.board{
+  display:grid;
+  gap:8px;
+  justify-content:center;
+  margin-top:6px;
+}
+.guessRow{
+  display:grid;
+  gap:8px;
+}
+
+.tile{
+  width:54px;
+  height:54px;
+  border-radius:12px;
+  border:2px solid color-mix(in srgb, var(--theme) 38%, var(--border));
+  background: color-mix(in srgb, var(--theme) 10%, var(--tile));
+  display:grid;
+  place-items:center;
+  font-size:1.45rem;
+  font-weight:800;
+  text-transform:uppercase;
+  user-select:none;
+  color:var(--text);
+  transition:transform .15s ease, background .2s ease, color .2s ease, border-color .2s ease;
+}
+.tile.pop{
+  transform:scale(1.05);
+}
+.tile.absent{
+  background:var(--absent);
+  border-color:var(--absent);
+  color:#fff;
+}
+
+/* present = pastel tint of the theme */
+body.red .tile.present{
+  background: color-mix(in srgb, var(--theme) 22%, white);
+  border-color: color-mix(in srgb, var(--theme) 30%, white);
+  color:#111;
+}
+body.pink .tile.present{
+  background: color-mix(in srgb, var(--theme) 22%, white);
+  border-color: color-mix(in srgb, var(--theme) 30%, white);
+  color:#111;
+}
+body.purple .tile.present{
+  background: color-mix(in srgb, var(--theme) 22%, white);
+  border-color: color-mix(in srgb, var(--theme) 30%, white);
+  color:#111;
+}
+body.blue .tile.present{
+  background: color-mix(in srgb, var(--theme) 22%, white);
+  border-color: color-mix(in srgb, var(--theme) 30%, white);
+  color:#111;
+}
+
+body.standard .tile.correct{
+  background: var(--theme);
+  border-color: var(--theme);
+  color:#fff;
+}
+
+body.intense .tile.present{
+  background: color-mix(in srgb, var(--theme) 18%, white);
+  border-color: color-mix(in srgb, var(--theme) 26%, white);
+  color:#111;
+}
+
+body.intense .tile.correct{
+  background: var(--theme);
+  border-color: var(--theme);
+  color:#fff;
+}
+
+.inputWrap{
+  display:flex;
+  gap:10px;
+  flex-wrap:wrap;
+  width:min(560px,100%);
+  margin:14px auto 0;
+}
+input{
+  flex:1;
+  min-width:220px;
+  border-radius:14px;
+  border:1px solid var(--border);
+  background:var(--tile);
+  color:var(--text);
+  padding:14px 16px;
+  font-size:1rem;
+  outline:none;
+  text-transform:lowercase;
+}
+input:focus{
+  border-color:var(--theme);
+  box-shadow:0 0 0 4px color-mix(in srgb, var(--theme) 18%, transparent);
+}
+.btn{
+  border:0;
+  border-radius:14px;
+  padding:12px 16px;
+  font-size:.98rem;
+  cursor:pointer;
+  color:#fff;
+  background:var(--theme);
+}
+.msg{
+  min-height:24px;
+  font-weight:700;
+  text-align:center;
+}
+.ok{color:#16a34a}
+.bad{color:#ef4444}
+
+.statLine{
+  display:flex;
+  justify-content:space-between;
+  gap:10px;
+  font-size:.93rem;
+  color:var(--muted);
+  flex-wrap:wrap;
+}
+.statBar{
+  width:100%;
+  height:18px;
+  border-radius:999px;
+  overflow:hidden;
+  background:#cbd5e1;
+  display:flex;
+  margin-top:10px;
+}
+.statWins{background:var(--theme);width:0%}
+.statLosses{background:#9ca3af;width:0%}
+.tiny{
+  font-size:.92rem;
+  color:var(--muted);
+  margin-top:10px;
+}
+
+@media (max-width:640px){
+  h1{font-size:1.7rem}
+  .tile{width:48px;height:48px;font-size:1.25rem}
+  .dropdown{width:min(340px,calc(100vw - 40px))}
+}
+</style>
+</head>
+<body class="night red standard">
+<div class="app">
+  <div class="panel">
+    <div class="topbar">
+      <h1 id="titleEl">wordle</h1>
+      <div class="topActions">
+        <button class="menuToggle" id="menuToggle" type="button" aria-expanded="false" aria-controls="dropdownMenu" aria-label="Open menu">
+          <span><i></i><i></i><i></i></span>
+        </button>
+        <div class="dropdown" id="dropdownMenu">
+          <div class="dropdownGroup">
+            <button class="groupHeader" type="button">Mode</button>
+            <div class="groupBody">
+              <div class="modeRow">
+                <button class="pill active" data-mode="medium">Medium</button>
+                <button class="pill" data-mode="easy">Easy</button>
+                <button class="pill" data-mode="difficult">Difficult</button>
+                <button class="pill" data-mode="random">Random</button>
+                <button class="pill" data-mode="intense" id="intenseModeBtn">Intense</button>
+              </div>
+              <div style="height:10px"></div>
+              <div class="modeRow">
+                <button class="pill active" data-check="online" id="onlineBtn">Online</button>
+                <button class="pill" data-check="offline" id="offlineBtn">Offline</button>
+              </div>
+              <div class="note" id="modeNote"></div>
+            </div>
+          </div>
+
+          <div class="dropdownGroup">
+            <button class="groupHeader" type="button">History</button>
+            <div class="groupBody">
+              <div class="statLine">
+                <span>Played: <strong id="playedStat">0</strong></span>
+                <span>Wins: <strong id="winsStat">0</strong></span>
+                <span>Losses: <strong id="lossesStat">0</strong></span>
+                <span>Win %: <strong id="winPctStat">0%</strong></span>
+              </div>
+              <div class="statBar">
+                <div class="statWins" id="statWins"></div>
+                <div class="statLosses" id="statLosses"></div>
+              </div>
+              <div class="tiny" id="historyTiny"></div>
+            </div>
+          </div>
+
+          <div class="dropdownGroup">
+            <button class="groupHeader" type="button">Theme</button>
+            <div class="groupBody">
+              <div class="switchRow" style="margin-bottom:10px">
+                <button class="chip" id="lightBtn" type="button">Light</button>
+                <button class="chip active" id="nightBtn" type="button">Night</button>
+              </div>
+              <div class="themeRow">
+                <button class="themeDot red" data-theme="red" type="button"></button>
+                <button class="themeDot pink" data-theme="pink" type="button"></button>
+                <button class="themeDot purple" data-theme="purple" type="button"></button>
+                <button class="themeDot blue" data-theme="blue" type="button"></button>
+              </div>
+              <div class="note">Intense mode uses its own locked palette and cannot be manually themed.</div>
+            </div>
+          </div>
+
+          <div class="dropdownGroup">
+            <button class="groupHeader" type="button">Rules</button>
+            <div class="groupBody">
+              <div class="tiny">
+                Easy: 3 or 4 letters, 5 guesses.<br>
+                Medium: 5 or 6 letters, 5 guesses.<br>
+                Difficult: 7 or 8 letters, 6 guesses.<br>
+                Intense: 9 or 10 letters, 7 guesses.<br><br>
+                Offline mode: some valid English words may not be accepted.<br><br>
+                Intense mode is unlocked by winning 5 easy, 3 medium or 1 difficult game.<br>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="status">
+      <div>Guesses used: <strong id="used">0</strong></div>
+      <div>Guesses left: <strong id="left">0</strong></div>
+      <div>Word length: <strong id="length">0</strong></div>
+    </div>
+
+    <div id="board" class="board"></div>
+
+    <div class="inputWrap">
+      <input id="guessInput" type="text" placeholder="Type your guess and press Enter" autocomplete="off" spellcheck="false" />
+      <button class="btn" id="guessBtn" type="button">Guess</button>
+    </div>
+
+    <div id="message" class="msg"></div>
+  </div>
+</div>
+
+<script>
+const wordLists = {
+3: [...new Set([
+"ace","act","add","age","ago","aid","aim","air","all","and","any","ape","app","apt","arm","art","ash","ask","awe","bad","bag","ban","bar","bat","bay","bed","bee","beg","bet","big","bin","bit","bog","boy","bud","bug","bun","bus","but","buy","cab","can","cap","car","cat","cow","cry","cup","cut","dag","dam","day","den","dew","did","die","dig","dim","dip","dog","dot","dry","dug","dun","ear","eat","eel","egg","ego","elf","elk","end","era","eve","eww","far","fat","fax","fed","few","fig","fin","fit","fix","fly","fog","for","fox","fun","gap","gas","gel","get","gig","gin","god","got","gum","gun","gut","had","ham","has","hat","hay","her","hey","hid","him","hip","hit","hog","hop","hot","how","hub","hug","hum","ice","ill","ink","inn","jab","jar","jaw","jet","job","jog","joy","jug","ken","key","kid","kin","kit","lab","lad","lag","lap","law","lay","led","leg","let","lid","lie","lip","lit","log","lot","low","mad","man","map","mat","may","men","met","mix","mob","mom","mud","nap","net","new","nod","not","now","nut","oak","odd","off","oil","old","one","our","out","own","pad","pan","pat","pay","peg","pen","pet","pie","pig","pin","pit","pop","pot","pro","pub","pun","put","rag","ram","ran","rap","rat","raw","red","rid","rig","rim","rip","rod","row","rub","rug","run","sad","sat","saw","say","sea","see","set","sew","she","shy","sip","sit","six","sky","son","sow","sun","tag","tap","tar","tax","tea","ten","the","tie","tip","toe","top","toy","try","tug","two","use","van","vet","war","was","wax","way","web","wet","who","why","win","wit","wow","yak","yam","yap","yaw","yay","yes","yet","you","zip","zoo"
+])], 
+4: [...new Set([
+"able","acid","aged","also","area","army","away","baby","back","ball","band","bank","base","bath","bear","beat","been","beer","bell","belt","best","bill","bird","blow","blue","boat","body","bomb","bond","bone","book","boom","born","boss","both","bowl","bulk","burn","bush","busy","call","calm","came","camp","card","care","case","cash","cast","cell","chat","chip","city","club","coal","coat","code","cold","come","cook","cool","cope","copy","cost","crew","crop","cure","dark","data","date","dawn","days","dead","deal","dean","dear","debt","deep","deny","desk","dial","diet","disc","disk","does","done","door","dose","down","draw","drew","drop","drug","dual","duke","dust","duty","each","earn","ease","east","easy","edge","else","even","ever","evil","exit","face","fact","fail","fair","fall","farm","fast","fate","fear","feed","feel","feet","fell","felt","file","fill","film","find","fine","fire","firm","fish","five","flat","flow","food","foot","ford","form","fort","four","free","from","fuel","full","fund","gain","game","gate","gave","gear","gene","gift","girl","give","glad","goal","goes","gold","gone","good","gray","grew","grey","grow","gulf","hair","half","hall","hand","hang","hard","harm","hate","have","head","hear","heat","held","hell","help","here","hero","high","hill","hire","hold","hole","holy","home","hope","host","hour","huge","hung","hunt","hurt","idea","inch","into","iron","item","jack","join","jump","jury","just","keen","keep","kept","kick","kill","kind","king","knee","knew","know","lack", "lady","laid","lake","land","lane","last","late","lead","left","less","life","lift","like","line","link","list","live","load","loan","lock","long","look","lord","lose","loss","lost","love","luck","made","mail","main","make","male","many","mass","meal","mean","meat","meet","menu","mere","mile","milk","mill","mind","mine","miss","mode","mood","moon","more","most","move","much","must","name","navy","near","neck","need","news","next","nice","nine","none","nose","note","okay","once","only","onto","open","oral","over","pace","pack","page","paid","pain","pair","palm","park","part","pass","past","path","peak","pick","pink","pipe","plan","play","plot","plug","plus","poll","pool","poor","port","post","pull","pure","push","race","rail","rain","rank","rare","rate","read","real","rear","rely","rent","rest","rice","rich","ride","ring","rise","risk","road","rock","role","roll","roof","room","root","rose","rule","rush","safe","said","sake","sale","salt","same","sand","save","seat","seed","seek","seem","seen","self","sell","send","sent","ship","shop","shot","show","shut","sick","side","sign","site","size","skin","slip","slow","snow","soft","soil","sold","sole","some","song","soon","sort","soul","spot","star","stay","step","stop","such","suit","sure","take","tale","talk","tall","tank","tape","task","team","tech","tell","tend","term","test","text","than","that","them","then","they","thin","this","thus","till","time","tiny","told","toll","tone","took","tool","tour","town","tree","trip","true","tune","turn","twin","type","unit","upon","used","user","vary","vast","very","vice","view","vote","wage","wait","wake","walk","wall","want","ward","warm","wash","wave","ways","weak","wear","week","well","went","were","west","what","when","whom","wide","wife","wild","will","wind","wine","wing","wire","wise","wish","with","wood","word","wore","work","yard","yeah","year","your","zero","zone"
+])],
+ 5: [...new Set([
+"aback","abase","abate","abbey","abbot","abhor","abide","abled","abode","abort","about","above","abuse","acute","adage","adapt","added","adept","admit","adopt","adore","adult","adverb","after","again","agent","agile","aging","aglow","ahead","aisle","alarm","album","alert","alike","alive","allow","alone","along","alter","among","angel","anger","angle","angry","apart","apple","apply","arena","argue","arise","armed","armor","arose","array","arrow","aside","asset","atlas","audit","avoid","awake","award","aware","bacon","badge","baker","balmy","banal","basis","baths","beach","beard","beast","begin","being","below","berry","birch","black","blade","blame","blank","blast","blend","blind","blink","block","blood","board","boast","boost","brain","brake","brand","brave","bread","break","brick","bride","bring","broad","broil","brown","brush","build","bulky","bunch","cabin","cable","camel","candy","carry","catch","cater","cease","charm","chart","chase","cheap","check","chest","chief","child","chill","choir","chose","chunk","civil","class","clean","clear","clerk","click","climb","clock","close","cloth","cloud","coach","coast","color","couch","could","count","court","cover","craft","crash","crazy","cream","crime","cross","crowd","crown","curve","cycle","daily","dance","dared",
+  "darky","dealt","debut","delay","demon","dense","depth","devil","dirty","ditch","dozen","draft","drama","dream","dress","drift","drink","drive","drown","eager","early","earth","easel","eaten","elder","elect","enjoy","entry","equal","error","event","every","exact","exist","extra","faint","faith","false","fancy","favor","feast","fiber","field","fifty","fight","final","first","flame","flash","fleet","flint","floor","flour","focus","force","forge","forth","forty","frame","fresh","front","frost","fruit","giant","glare","glass","glide","glory","grace","grade","grain","grand","grant","grape","graph","grasp","grass","great","green","greet","grief","group","guard","guess","guest","habit","happy","harsh","heart","heavy","honey","house","human","humor","ideal","image","index","inner","insect","input","issue","jeans","joint","judge","juice","kayak","knife","knock","known","label","large","laser","laugh","layer","learn","leave","legal","level","light","limit","liver","local","loose","lunch","magic","major","maker","march","match","maybe","media","meant","metal","midst","minor","model","money","month","motor","mouse","movie","music","naive","nasty","night","noise","north","novel","nurse","ocean","offer","order","other","owner","panel","panic","paper","party","peace","piano","place","plain","plane","plant","plate","point","power","press","price","pride","prime","print","prior","prize","proof","proud","queen","quick","quiet","quite","radio","raise","range","rapid","reach","react","ready","realm","reply","rider","right","rival","river","robot","rough","round","route","royal","rural","salad","scale","scene","scope","score","sense","serve","shape","share","sharp","sheep","sheet","shift","shine","shiny","shirt","shock","shoot","shore","short","shout","sight","since","skill","sleep","slice","slide","slope","small","smart","smile","smith","smoke","solid","sound","south","space","spare","speak","speed","spend","spice","spite","split","spoil","sport","staff","stage","stair","stake","stand","start","steam","steel","steep","stick","still","stock","stone","store","storm","story","straw","strip","stuck","style","sugar","super","sweet","table","taste","teach","thank","their","theme","there","thick","thing","think","threw","throw","thumb","tight","today","topic","total","touch","tough","tower","track","trade","train","trend","trial","trust","truth","under","union","unity","upper","upset","urban","usage","usual","value","vapor","valid","value","vital","voice","voter","waste","watch","water","weary","weigh","whale","wheat","where","which","while","white","whole","woman","world","worry","worth","would","wound","write","wrong","yield","young","youth","zebra","zesty"
+])],
+6: [...new Set([
+"abacus","absent","accept","access","across","acting","action","active","advice","affect","almost","animal","answer","appeal","appears","around","arrive","artist","asleep","assess","assist","attack","author","beauty","before","behind","belief","better","bridge","bright","broken","bundle","candle","canvas","castle","caught","change","charge","choice","choose","circle","client","collar","combat","coming", "common","cookie","counts","create","crowds","damage","danger","dealer","debate","decide","defeat","design","detail","dinner","doctor","dollar","double","dragon","easily","effort","either","emerge","enough","energy","engine","equity","escape","esteem","fabric","family","famous","farmer","father","fellow","figure","finger","finish","flight","flower","follow","forest","former","french","friend","future","garage","garden","gather","gentle","golden","growth","hammer","health","helper","hidden","honest","impact","income","income","insect","inside","jacket","journey","keeper","kindly","kitchen","knight","leader","league","legacy","lesson","little","living","locate","lounge","market","master","mental","middle","modern","moment","motion","mother","mounts","museum","nation","nature","nearly","nobody","number","object","office","outlet","packed","palace","pencil","people","person","planet","player","plenty","police","praise","prefer","pretty","prince","public","puzzle","quartz","quiver","rather","reason","recall","reduce","reform","region","remain","remote","repair","return","ribbon","rocket","safety","search","second","select","senior","series","shadow","should","simple","singer","silent","silver","sister","smooth","soccer","spring","square","stable","street","stretch","strong","success","summer","supply","system","teacher","thirty","though","threat","travel","trusty","unique","united","useful","vacuum","valley","violin","window","wonder","yellow","zephyr"
+])],
+ 7: [...new Set([
+"abandon","abashed","abating","abducts","abetted","abiding","ability","abolish","aborted","abounds","abridge","absence","absents","absorbs","absolve","abstain","absurds","academy","account","accrued","accurate","achieve","acquire","address","advance","adverse","advised","advocate","airfare","airport","almonds","amazing","ancient","another","anxiety","anything","apology","applaud","arrange","article","artisan","assembly","assured","athlete","attached","attempt","attract","auction","audible","authority","balance","banquet","barking","battles","bearing","because","bedroom","behavior","believe","beneath","benefit","between","billion","biology","birthday","blanket","blessing","blocking","brother","browser","cabinet","calming","campaign","capable","captain","capture","careful","cartoon","century","chamber","charity","checked","chemical","children","circular","citizen","clarity","classic","cleanup","college","combine","comfort","command","complete","computer","conclude","concerts","conduct","connect","conserve","contact","content","contest","continue","contract","control","convert","courage","crazily","creative","crucial","currency","custody","daughter","decided","decline","default","defense","deliver","density","deserve","diamond","discuss","dismiss","display","diverse","doctrine","domestic","drawing","duration","earnings","education","efforts","elegant","embrace","emotional","encircle","endeavor","enforce",
+  "enhance","enormous","entrance","equation","equipped","essential","estimate","exercise","exhibit","expected","explains","exposure","external","favorite","festival","financial","forecast","friendly","function","generate","generous","geometry","glorious","graduate","graphics","hardware","harmony","headline","heritage","historic","homeland","important","improve","increase","indicator","industry","innocent","influence","inquiry","internet","invasion","keyboard","knowledge","landscape","language","laughter","learning","lifecycle","location","magazine","marketing","medicine","migration","mortgage","movement","naturally","necessary","neighborhood","obstacle","offering","opponent","opportunity","organized","overcome","passenger","percentage","personal","painting","peaceful","permission","photograph","platform","positive","practical","precision","presence","priority","procedure","proposal","protects","published","quantity","quickest","radiance","reaction","reference","registry","relations","remember","remaining","reputation","research","restaurant","revolution","saturday","selection","sequence","signature","situation","solution","strategy","successful","technology","temporary","theatre","together","tradition","transport","triangle","valuable","variation","vibration","violence","weekend","wildfire","yesterday"
+])],
+ 8: [...new Set([
+"abacuses","abandoned","abductee","abductor","aberrant","abnormal","abolished","abolishes","abounded","abrasion","abrasive","abruptly","absence","absolute","absorbed","abundance","academy","accepted","accessed","acclaim","accident","acquired","acronym","activate","actually","adapted","admirers","admission","adoptive","advanced","adventure","adversity","affection","afterglow","agreement","airborne","aircraft","algebraic","alignment","alphabet","analytics","announced","antibody","apparent","applauds","appliance","appointment","appreciate","architect","argument","arranged","articles","artistic","assembly","assurance","athletes","atmosphere","attention","attraction","audience","autonomy","balanced","balloons","bankrupt","baseball","bathroom","beautiful","believed","benchmark","benevolent","beneficial","biography","birthday","blessing","blueprint","bookkeeper","breakfast","brighter","broadcast","brotherly","buildings","campaign","candidates","carefully","categories","celebrate","character","checklist","chemistry","childhood","citizens","classroom","collection","comfortable","commission","community","compatible","competition","complaint","completion","composition","computer","conclusion","conference","confidence","connection","conscious","contribute","coordinate","corporate","creativity","crossroad","dashboard","dedicated","definition","delightful","democracy","department","description","destination","development","dictionary","difference","difficulty","digitally","direction","discovery","discussion","disturbed","education","electric","elegance","emergency","emotional","employment","encounter","engineering","enormous","entertain","enthusiasm","environment",
+  "equipment","evaluation","everybody","everything","excellence","excellent","experience","explanation","expression","extraordinary","fabricate","fantastic","fashioned","favorable","fascinate","foundation","generation","glimmering","government","grandchild","grandfather","handshake","happiness","highlight","historical","household","imagination","impressive","incredible","independent","individual","information","innovation","inspection","instrument","interaction","interesting","introduction","investment","journalist","knowledge","laboratory","leadership","lightning","magazine","maintenance","marketing","measurement","membership","mysterious","navigation","neighborhood","occasion","occupation","opportunity","organization","overcame","parameters","partnership","performance","perspective","photograph","politician","possibility","preference","presentation","processing","professional","programmer","progress","publication","qualification","reasonable","relationship","remembered","representation","reservation","responsible","restriction","satisfaction","scientific","significant","simulation","substantial","suggestion","technology","traditional","transported","understand","university","vacationing","vegetation","verification","wonderful","workstation","yesterday"
+])],
+9: [...new Set([
+"abandoner","abdominal","abolished","absconded","abundance","acclaimed","accomplice","achievement","activation","adjustment","adventure","aeroplane","afterglow","agreement","alligator","alphabetic","altogether","ambulance","amusement","announcement","apartment","apparatus","appellate","appointment","appreciate","architecture","arrangement","articulate","assessment","association","astonished","attention","attractive","automation","background","basketball","believable","benevolent","biography","blackened","bookkeeper","breakfasts","brightness","broadcast","brotherhood","carefully","celebrate","character","chemistry","childhood","circumvent","clarified","classroom","collection","comfortable","communicate","competition","completely","composition","conclusion","confidence","considered","construction","contributor","conversation","coordinate","corporate","credibility","criminally","crossroads","curiosity","dangerous","department","description","development","dictionary","difference","difficulty","discovery","discussion","education","electronic","emergency","employment","encryption","engineering","enormously","enthusiasm","environment","equivalent","established","evaluation","everything","excellence","excitement","experience","explanation","expression","extraordinary","fabrication","fascinated","foundation","frequently","generation","government","graduation","grandchild","happiness","historical","householder","impossible","incredible","independent","information","innovation","inspection","interaction","interesting","introduction","investment","journalism","knowledge","leadership",
+  "lightening","maintenance","manufacturer","medication","membership","motivation","multiplayer","navigation","neighborhood","observation","opportunity","organization","overcoming","participant","performance","perspective","photograph","possibility","preference","presentation","processing","professional","programmer","publication","qualification","relationship","representation","reservation","responsible","satisfaction","scientific","significant","simulation","substantial","suggestion","technology","temperature","traditional","transported","understand","university","visualized","wonderfully"
+])],
+10: [...new Set([
+"abandoners","abbreviate","abductees","abolishing","abominable","absorption","abstracted","accidental","acclamation","accommodate","accountant","achievement","acknowledge","adaptation","adjustment","adolescence","adventurer","aftershock","aggregation","agreement","alphabetic","ammunition","anniversary","announcement","appreciate","architecture","arrangement","articulate","assessment","association","astonished","attachment","attendance","authentic","background","basketball","beautifully","beforehand","believable","benevolent","breakthrough","bureaucracy","calculation","celebration","character","circulation","classification","collection","comfortable","communicate","competition","completely","composition","conclusion","confidence","conglomerate","construction","continuing","conversation","coordination","corporation","credibility","creatively","curiosity","department","description","development","dictionary","difference","difficulty","discovered","discussion","education","electricity","employment","encouraging","engineering","enormously","entertains","environment","established","evaluation","everything","excellence","experience","extraordinary","fabrication","foundation","generation","government","graduation","grandfather","happiness","historical","housekeeper","identifying","imagination","immediately","implementation","incredible","independent","information","innovation","inspection","interaction","interesting","introduction","investigate","journalists","knowledgeable","leadership","manufacture","mathematics","measurement","memorization","metropolitan","motivation","neighborhood","organization","participate","performance","perspective","photographs","possibility","preparation","presentation","professional","programming","publication","qualification","questioning","relationship","representation","responsible","satisfaction","scientific","significant","specialized","substantial","technology","traditional","transported","understanding","university","vacationing","visualizing","workstation","yesterday"
+])]
+};
+
+let mode = 'medium';
+let wordCheckMode = 'online';
+let target = '';
+let targetLen = 0;
+let maxGuesses = 0;
+let used = 0;
+let left = 0;
+let played = [];
+let validSet = new Set();
+let currentDifficulty = 'medium';
+let menuOpen = false;
+
+const $ = id => document.getElementById(id);
+const defaultStats = { played: 0, wins: 0, losses: 0, easyWins: 0, mediumWins: 0, difficultWins: 0 };
+
+const getStats = () => JSON.parse(localStorage.getItem('wb_stats') || JSON.stringify(defaultStats));
+const setStats = s => {
+  localStorage.setItem('wb_stats', JSON.stringify(s));
+  updateStatsUI();
+  updateModeLocks();
+};
+
+function updateStatsUI() {
+  const s = getStats();
+  const p = s.played;
+  const winPct = p ? Math.round((s.wins / p) * 100) : 0;
+  $('playedStat').textContent = p;
+  $('winsStat').textContent = s.wins;
+  $('lossesStat').textContent = s.losses;
+  $('winPctStat').textContent = winPct + '%';
+  $('statWins').style.width = p ? (s.wins / p * 100) + '%' : '0%';
+  $('statLosses').style.width = p ? (s.losses / p * 100) + '%' : '0%';
+  $('historyTiny').textContent = 'Wins unlock Intense: 5 Easy, 3 Medium, or 1 Difficult.';
+}
+
+function isIntenseUnlocked(s = getStats()) {
+  return (s.easyWins || 0) >= 5 || (s.mediumWins || 0) >= 3 || (s.difficultWins || 0) >= 1;
+}
+
+function updateModeLocks() {
+  const b = $('intenseModeBtn');
+  const unlock = isIntenseUnlocked();
+  b.disabled = !unlock;
+  b.title = unlock ? 'Unlocked' : 'Locked: win 5 Easy, 3 Medium, or 1 Difficult';
+}
+
+function updateTitle() {
+  $('titleEl').textContent = mode === 'intense' ? 'intense wordle' : 'wordle';
+}
+
+function setTheme(next) {
+  document.body.classList.remove('red','pink','purple','blue');
+  document.body.classList.add(next);
+}
+
+function setNight(isNight) {
+  document.body.classList.toggle('night', isNight);
+  $('lightBtn').classList.toggle('active', !isNight);
+  $('nightBtn').classList.toggle('active', isNight);
+}
+
+function setWordCheck(next) {
+  wordCheckMode = next;
+  $('onlineBtn').classList.toggle('active', next === 'online');
+  $('offlineBtn').classList.toggle('active', next === 'offline');
+  $('modeNote').textContent = next === 'offline' ? 'Offline mode: some valid English words may not be accepted.' : '';
+}
+
+function setMode(next) {
+  mode = next;
+  document.querySelectorAll('[data-mode]').forEach(b => b.classList.toggle('active', b.dataset.mode === next));
+  document.body.classList.toggle('intense', next === 'intense');
+  document.body.classList.toggle('standard', next !== 'intense');
+  updateTitle();
+}
+
+function getModeFromChoice() {
+  if (mode === 'random') {
+    const r = Math.random();
+    if (r < 0.20) return 'easy';
+    if (r < 0.70) return 'medium';
+    if (r < 0.85) return 'difficult';
+    return isIntenseUnlocked() ? 'intense' : 'medium';
+  }
+  return mode;
+}
+
+function configureDifficulty() {
+  const chosen = getModeFromChoice();
+  currentDifficulty = chosen;
+  let len, guesses;
+  if (chosen === 'easy') {
+    len = Math.random() < 0.5 ? 3 : 4;
+    guesses = 5;
+  } else if (chosen === 'medium') {
+    len = Math.random() < 0.5 ? 5 : 6;
+    guesses = 5;
+  } else if (chosen === 'difficult') {
+    len = Math.random() < 0.5 ? 7 : 8;
+    guesses = 6;
+  } else {
+    len = Math.random() < 0.5 ? 9 : 10;
+    guesses = 7;
+  }
+  return { len, guesses };
+}
+
+function pickRandomWord(length) {
+  const list = wordLists[length] || [];
+  return list.length ? list[Math.floor(Math.random() * list.length)] : 'apple';
+}
+
+function loadValidSet(length) {
+  validSet = new Set((wordLists[length] || []).map(w => w.toLowerCase()));
+}
+
+function renderBoard() {
+  const board = $('board');
+  board.innerHTML = '';
+  for (let r = 0; r < maxGuesses; r++) {
+    const row = document.createElement('div');
+    row.className = 'guessRow';
+    row.style.gridTemplateColumns = `repeat(${targetLen}, 54px)`;
+    for (let c = 0; c < targetLen; c++) {
+      const t = document.createElement('div');
+      t.className = 'tile';
+      row.appendChild(t);
+    }
+    board.appendChild(row);
+  }
+}
+
+function startGame() {
+  const cfg = configureDifficulty();
+  targetLen = cfg.len;
+  maxGuesses = cfg.guesses;
+  used = 0;
+  left = maxGuesses;
+  played = [];
+  loadValidSet(targetLen);
+  target = pickRandomWord(targetLen);
+  $('used').textContent = used;
+  $('left').textContent = left;
+  $('length').textContent = targetLen;
+  $('message').textContent = '';
+  $('message').className = 'msg';
+  $('guessInput').value = '';
+  $('guessInput').disabled = false;
+  $('guessInput').maxLength = targetLen;
+  renderBoard();
+  if (mode === 'intense') document.body.classList.add('intense');
+  else document.body.classList.remove('intense');
+  $('guessInput').focus();
+}
+
+function scoreGuess(guess, answer) {
+  const res = Array(targetLen).fill('absent');
+  const remaining = answer.split('');
+  for (let i = 0; i < targetLen; i++) {
+    if (guess[i] === answer[i]) {
+      res[i] = 'correct';
+      remaining[i] = null;
+    }
+  }
+  for (let i = 0; i < targetLen; i++) {
+    if (res[i] === 'correct') continue;
+    const idx = remaining.indexOf(guess[i]);
+    if (idx !== -1) {
+      res[i] = 'present';
+      remaining[idx] = null;
+    }
+  }
+  return res;
+}
+
+function renderGuess(guess, score) {
+  const row = $('board').children[played.length - 1];
+  [...row.children].forEach((tile, i) => {
+    tile.textContent = guess[i].toUpperCase();
+    tile.classList.add(score[i], 'pop');
+    setTimeout(() => tile.classList.remove('pop'), 140);
+  });
+}
+
+function message(text, ok) {
+  $('message').textContent = text;
+  $('message').className = 'msg ' + (ok ? 'ok' : 'bad');
+}
+
+async function isEnglishWord(word) {
+  try {
+    const res = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${encodeURIComponent(word)}`);
+    return res.ok;
+  } catch {
+    return true;
+  }
+}
+
+async function validateGuess(word) {
+  return wordCheckMode === 'offline' ? validSet.has(word) : await isEnglishWord(word);
+}
+
+function recordGame(won, difficulty) {
+  const s = getStats();
+  s.played += 1;
+  if (won) {
+    s.wins += 1;
+    if (difficulty === 'easy') s.easyWins += 1;
+    if (difficulty === 'medium') s.mediumWins += 1;
+    if (difficulty === 'difficult') s.difficultWins += 1;
+  } else {
+    s.losses += 1;
+  }
+  setStats(s);
+}
+
+async function finalizeGame(won) {
+  $('guessInput').disabled = true;
+  recordGame(won, currentDifficulty);
+  message(won ? 'You won! 🎉' : `Game over. The word was ${target.toUpperCase()}.`, won);
+}
+
+async function submitGuess() {
+  if (!target) return;
+  const input = $('guessInput');
+  const guess = input.value.trim().toLowerCase();
+
+  if (guess.length !== targetLen) {
+    message(`Enter a ${targetLen}-letter word.`, false);
+    return;
+  }
+  if (!/^[a-z]+$/.test(guess)) {
+    message('Only letters are allowed.', false);
+    return;
+  }
+  if (played.includes(guess)) {
+    message('You already guessed that word.', false);
+    return;
+  }
+
+  message('Checking word...', true);
+  const valid = await validateGuess(guess);
+  if (!valid) {
+    message(wordCheckMode === 'offline' ? 'Not in the offline word list.' : 'Not a valid English dictionary word.', false);
+    return;
+  }
+
+  played.push(guess);
+  used += 1;
+  left -= 1;
+  renderGuess(guess, scoreGuess(guess, target));
+  $('used').textContent = used;
+  $('left').textContent = left;
+
+  if (guess === target) {
+    await finalizeGame(true);
+    return;
+  }
+  if (left === 0) {
+    await finalizeGame(false);
+    return;
+  }
+
+  message('', false);
+  input.value = '';
+  input.focus();
+}
+
+function toggleMenu(force) {
+  menuOpen = typeof force === 'boolean' ? force : !menuOpen;
+  $('dropdownMenu').classList.toggle('open', menuOpen);
+  $('menuToggle').setAttribute('aria-expanded', menuOpen ? 'true' : 'false');
+}
+
+function bindUI() {
+  $('menuToggle').addEventListener('click', () => toggleMenu());
+  document.addEventListener('click', e => {
+    const wrap = $('menuToggle').parentElement;
+    if (!wrap.contains(e.target)) toggleMenu(false);
+  });
+
+  document.querySelectorAll('.groupHeader').forEach(btn => {
+    btn.addEventListener('click', () => {
+      btn.nextElementSibling.hidden = !btn.nextElementSibling.hidden;
+    });
+  });
+
+  document.querySelectorAll('[data-mode]').forEach(btn => btn.addEventListener('click', () => {
+    const m = btn.dataset.mode;
+    if (m === 'intense' && !isIntenseUnlocked()) return;
+    setMode(m);
+    startGame();
+    toggleMenu(false);
+  }));
+
+  document.querySelectorAll('[data-check]').forEach(btn => btn.addEventListener('click', () => {
+    setWordCheck(btn.dataset.check);
+    startGame();
+  }));
+
+  document.querySelectorAll('[data-theme]').forEach(dot => dot.addEventListener('click', () => {
+    if (mode === 'intense') return;
+    setTheme(dot.dataset.theme);
+  }));
+
+  $('lightBtn').addEventListener('click', () => {
+    if (mode === 'intense') return;
+    setNight(false);
+  });
+
+  $('nightBtn').addEventListener('click', () => {
+    if (mode === 'intense') return;
+    setNight(true);
+  });
+
+  $('guessBtn').addEventListener('click', submitGuess);
+  $('guessInput').addEventListener('keydown', e => {
+    if (e.key === 'Enter') submitGuess();
+  });
+}
+
+function init() {
+  updateStatsUI();
+  updateModeLocks();
+  setWordCheck('online');
+  setTheme('red');
+  setNight(true);
+  setMode('medium');
+  bindUI();
+  startGame();
+  $('intenseModeBtn').disabled = !isIntenseUnlocked();
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', init);
+} else {
+  init();
+}
+</script>
+</body>
+</html>
